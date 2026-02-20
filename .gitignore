@@ -30,5 +30,6 @@ go.work.sum
 # .idea/
 # .vscode/
 
-# This project's binary
+# This project's binary (main.go output)
+/main
 /agentExample
