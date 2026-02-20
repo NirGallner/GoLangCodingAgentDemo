@@ -1,22 +1,36 @@
 # agentExample
 
-## Usage
+A CLI agent that uses the Anthropic API with tools (read/edit files, run commands, grep, etc.). Includes a VS Code extension for chatting with the agent inside the editor.
 
-During a session you can type `/clear` or `/reset` to clear conversation context and continue with a fresh history. The agent can also clear context via the `clear_context` tool when you ask (e.g. "start over" or "forget the past").
+## Requirements
 
-## Linting
+- Go 1.21+
+- [Anthropic API key](https://console.anthropic.com/) (set `ANTHROPIC_API_KEY` or use extension settings)
 
-- **From this project:** run `./go-lint` to lint the whole project.
-- **As `go lint`:** install once so the `go` command finds it, then run `go lint` from any Go module directory:
+## CLI
 
-  ```bash
-  cp go-lint $(go env GOPATH)/bin/
-  ```
+Build and run the agent from stdin/stdout:
 
-  Ensure `$(go env GOPATH)/bin` is in your `PATH`. After that, from this (or any) project directory:
+```bash
+go build -o agentExample .
+./agentExample
+```
 
-  ```bash
-  go lint
-  ```
+Type messages and press Enter. Use `/clear` or `/reset` to clear conversation context.
 
-  The linter runs in the background (via the script) and lints the whole project.
+## VS Code extension
+
+The `extension/` folder contains a VS Code extension that opens a chat panel powered by the same agent.
+
+- **Setup**: See [extension/README.md](extension/README.md) for API key and binary setup.
+- **Develop**: From `extension/`: `npm install`, `npm run compile`, then run via F5 in VS Code.
+
+## Project layout
+
+- `main.go` — CLI entrypoint and agent loop
+- `tools/` — Tool definitions (file ops, grep, run command, etc.)
+- `extension/` — VS Code extension (TypeScript) for the chat UI
+
+## License
+
+Use as you like.

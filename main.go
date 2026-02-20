@@ -69,7 +69,7 @@ func (a *Agent) Run(ctx context.Context) error {
 	effectiveTools = append(effectiveTools, tools.MakeClearContextDefinition(clearFn))
 
 	for {
-		fmt.Print("\033[94mYou\033[0m: ")
+		fmt.Println("\033[94mYou\033[0m: ")
 		userInput, ok := a.getUserMessage()
 		if !ok {
 			break

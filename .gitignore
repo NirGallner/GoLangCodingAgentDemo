@@ -33,3 +33,8 @@ go.work.sum
 # This project's binary (main.go output)
 /main
 /agentExample
+
+# Extension: dependencies, build output, and bundled binary (keep source and config only)
+extension/node_modules/
+extension/out/
+extension/bin/

@@ -1,0 +1,53 @@
+{
+  "name": "agentexample-chat",
+  "displayName": "agentExample Chat",
+  "description": "Chat with the agentExample agent in its own window, focused on your project and main.go",
+  "version": "0.1.0",
+  "publisher": "agentexample",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:agentexample.openChat"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "agentexample.openChat",
+        "title": "Open agentExample Chat"
+      }
+    ],
+    "configuration": {
+      "title": "agentExample Chat",
+      "properties": {
+        "agentExample.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Anthropic API key (or set ANTHROPIC_API_KEY in your environment)"
+        },
+        "agentExample.agentPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to agentExample binary. If empty, uses the binary bundled in the extension (bin/)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "build:agent": "node -e \"require('fs').mkdirSync('bin',{recursive:true})\" && cd .. && go build -o extension/bin/agentExample ."
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "eslint": "^8.55.0",
+    "typescript": "^5.3.0"
+  }
+}
