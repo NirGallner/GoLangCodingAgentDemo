@@ -24,7 +24,14 @@ func main() {
 		return scanner.Text(), true
 	}
 
-	tools := []ToolDefinition{ReadFileDefinition, ListFilesDefinition, EditFileDefinition, CreateFileDefinition, RemoveFileDefinition, SearchFileDefinition}
+	tools := []ToolDefinition{
+		ReadFileDefinition, ListFilesDefinition, EditFileDefinition,
+		CreateFileDefinition, RemoveFileDefinition, SearchFileDefinition,
+		GrepInFileDefinition, GrepInFilesDefinition, RunCommandDefinition,
+		GetWorkingDirDefinition, MoveFileDefinition, CopyFileDefinition,
+		FileInfoDefinition, ListFilesRecursiveDefinition, ReadFileLinesDefinition,
+		CreateDirectoryDefinition, RemoveDirectoryDefinition,
+	}
 	agent := NewAgent(&client, getUserMessage, tools)
 	err := agent.Run(context.Background())
 	if err != nil {
