@@ -1,19 +1,21 @@
+// Package main runs a simple CLI agent that uses the Anthropic API with tools
+// (e.g. read file). It reads user input from stdin and streams agent replies to stdout.
 package main
 
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 
 	"github.com/anthropics/anthropic-sdk-go"
+	"github.com/invopop/jsonschema"
 )
 
 func main() {
-
 	client := anthropic.NewClient()
 	scanner := bufio.NewScanner(os.Stdin)
-
 	getUserMessage := func() (string, bool) {
 		if !scanner.Scan() {
 			return "", false
@@ -21,28 +23,36 @@ func main() {
 		return scanner.Text(), true
 	}
 
-	agent := NewAgent(&client, getUserMessage)
-	err := agent.Run(context.TODO())
+	tools := []ToolDefinition{ReadFileDefinition}
+	agent := NewAgent(&client, getUserMessage, tools)
+	err := agent.Run(context.Background())
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
 	}
 }
 
+// Agent holds the API client, user input source, and available tools for a chat run.
 type Agent struct {
 	client         *anthropic.Client
 	getUserMessage func() (string, bool)
+	tools          []ToolDefinition
 }
 
-func NewAgent(client *anthropic.Client, getUserMessage func() (string, bool)) *Agent {
+// NewAgent builds an Agent with the given client, message reader, and tool set.
+func NewAgent(client *anthropic.Client, getUserMessage func() (string, bool), tools []ToolDefinition) *Agent {
 	return &Agent{
 		client:         client,
 		getUserMessage: getUserMessage,
+		tools:          tools,
 	}
 }
 
+const maxToolRounds = 10
+
+// Run runs the interactive loop: read user message, call the model (with tool use),
+// print the final text reply, repeat until stdin is closed.
 func (a *Agent) Run(ctx context.Context) error {
 	conversation := []anthropic.MessageParam{}
-
 	fmt.Println("Chat with the agent. Type 'ctrl+c' to exit.")
 
 	for {
@@ -54,7 +64,7 @@ func (a *Agent) Run(ctx context.Context) error {
 
 		userMessage := anthropic.NewUserMessage(anthropic.NewTextBlock(userInput))
 		conversation = append(conversation, userMessage)
-		message, err := a.runInterface(ctx, conversation)
+		message, err := a.runInterface(ctx, &conversation)
 		if err != nil {
 			return err
 		}
@@ -69,14 +79,129 @@ func (a *Agent) Run(ctx context.Context) error {
 	return nil
 }
 
-func (a *Agent) runInterface(ctx context.Context, conversation []anthropic.MessageParam) (*anthropic.Message, error) {
+// runInterface sends the conversation to the API and handles tool-use rounds
+// until the model returns a non-tool response or maxToolRounds is reached.
+func (a *Agent) runInterface(ctx context.Context, conversation *[]anthropic.MessageParam) (*anthropic.Message, error) {
+	anthropicTools := make([]anthropic.ToolUnionParam, 0, len(a.tools))
+	for _, tool := range a.tools {
+		anthropicTools = append(anthropicTools, anthropic.ToolUnionParam{
+			OfTool: &anthropic.ToolParam{
+				Name:        tool.Name,
+				Description: anthropic.String(tool.Description),
+				InputSchema: tool.InputSchema,
+			},
+		})
+	}
+
 	message, err := a.client.Messages.New(ctx, anthropic.MessageNewParams{
 		Model:     anthropic.ModelClaudeSonnet4_6,
 		MaxTokens: 1024,
-		Messages:  conversation,
+		Messages:  *conversation,
+		Tools:     anthropicTools,
 	})
 	if err != nil {
 		return nil, err
 	}
+
+	for round := 0; round < maxToolRounds && message.StopReason == anthropic.StopReasonToolUse; round++ {
+		*conversation = append(*conversation, message.ToParam())
+
+		var toolResultBlocks []anthropic.ContentBlockParamUnion
+		for _, block := range message.Content {
+			toolUse, ok := block.AsAny().(anthropic.ToolUseBlock)
+			if !ok {
+				continue
+			}
+			var result string
+			var isError bool
+			if fn := a.findTool(toolUse.Name); fn != nil {
+				result, err = fn.Function(toolUse.Input)
+				if err != nil {
+					result = err.Error()
+					isError = true
+				}
+			} else {
+				result = fmt.Sprintf("unknown tool: %s", toolUse.Name)
+				isError = true
+			}
+			toolResultBlocks = append(toolResultBlocks, anthropic.NewToolResultBlock(toolUse.ID, result, isError))
+		}
+		if len(toolResultBlocks) == 0 {
+			break
+		}
+
+		toolResultMessage := anthropic.NewUserMessage(toolResultBlocks...)
+		*conversation = append(*conversation, toolResultMessage)
+
+		message, err = a.client.Messages.New(ctx, anthropic.MessageNewParams{
+			Model:     anthropic.ModelClaudeSonnet4_6,
+			MaxTokens: 1024,
+			Messages:  *conversation,
+			Tools:     anthropicTools,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return message, nil
+}
+
+func (a *Agent) findTool(name string) *ToolDefinition {
+	for i := range a.tools {
+		if a.tools[i].Name == name {
+			return &a.tools[i]
+		}
+	}
+	return nil
+}
+
+// ToolDefinition describes a single tool: name, description, JSON schema for input, and handler.
+type ToolDefinition struct {
+	Name        string
+	Description string
+	InputSchema anthropic.ToolInputSchemaParam
+	Function    func(input json.RawMessage) (string, error)
+}
+
+// ReadFileDefinition is the tool that reads file contents by relative path.
+var ReadFileDefinition = ToolDefinition{
+	Name:        "readFile",
+	Description: "Read the contents of a given relative file path. Use this when you want to see what's inside a file. Do not use this with directory names.",
+	InputSchema: ReadFileInputSchema,
+	Function:    ReadFile,
+}
+
+// ReadFileInput is the JSON shape for the readFile tool.
+type ReadFileInput struct {
+	Path string `json:"path" jsonschema_description:"The relative path of a file in the working directory."`
+}
+
+// ReadFileInputSchema is the Anthropic tool input schema for readFile.
+var ReadFileInputSchema = GenerateSchema[ReadFileInput]()
+
+// ReadFile implements the readFile tool: reads the file at the given path and returns its contents or an error.
+func ReadFile(input json.RawMessage) (string, error) {
+	var readFileInput ReadFileInput
+	if err := json.Unmarshal(input, &readFileInput); err != nil {
+		return "", fmt.Errorf("readFile input: %w", err)
+	}
+	content, err := os.ReadFile(readFileInput.Path)
+	if err != nil {
+		return "", err
+	}
+	return string(content), nil
+}
+
+// GenerateSchema builds an Anthropic ToolInputSchemaParam from a struct type using jsonschema tags.
+func GenerateSchema[T any]() anthropic.ToolInputSchemaParam {
+	reflector := jsonschema.Reflector{
+		AllowAdditionalProperties: false,
+		DoNotReference:            true,
+	}
+	var v T
+	schema := reflector.Reflect(v)
+	return anthropic.ToolInputSchemaParam{
+		Properties: schema.Properties,
+	}
 }
