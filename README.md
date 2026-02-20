@@ -1,5 +1,9 @@
 # agentExample
 
+## Usage
+
+During a session you can type `/clear` or `/reset` to clear conversation context and continue with a fresh history. The agent can also clear context via the `clear_context` tool when you ask (e.g. "start over" or "forget the past").
+
 ## Linting
 
 - **From this project:** run `./go-lint` to lint the whole project.

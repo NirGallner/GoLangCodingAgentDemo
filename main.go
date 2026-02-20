@@ -63,6 +63,11 @@ func (a *Agent) Run(ctx context.Context) error {
 	conversation := []anthropic.MessageParam{}
 	fmt.Println("Chat with the agent. Type 'ctrl+c' to exit.")
 
+	var clearRequested bool
+	clearFn := func() { clearRequested = true }
+	effectiveTools := append([]tools.ToolDefinition{}, a.tools...)
+	effectiveTools = append(effectiveTools, tools.MakeClearContextDefinition(clearFn))
+
 	for {
 		fmt.Print("\033[94mYou\033[0m: ")
 		userInput, ok := a.getUserMessage()
@@ -74,10 +79,15 @@ func (a *Agent) Run(ctx context.Context) error {
 			fmt.Fprintln(os.Stderr, "Please enter a message.")
 			continue
 		}
+		if userInput == "/clear" || userInput == "/reset" {
+			conversation = conversation[:0]
+			fmt.Println("Context cleared. You can continue with a fresh conversation.")
+			continue
+		}
 
 		userMessage := anthropic.NewUserMessage(anthropic.NewTextBlock(userInput))
 		conversation = append(conversation, userMessage)
-		message, err := a.runInterface(ctx, &conversation)
+		message, err := a.runInterface(ctx, &conversation, effectiveTools)
 		if err != nil {
 			return err
 		}
@@ -88,15 +98,19 @@ func (a *Agent) Run(ctx context.Context) error {
 				fmt.Printf("\033[93mAgent\033[0m: %s\n", block.Text)
 			}
 		}
+		if clearRequested {
+			conversation = conversation[:0]
+			clearRequested = false
+		}
 	}
 	return nil
 }
 
 // runInterface sends the conversation to the API and handles tool-use rounds
 // until the model returns a non-tool response or maxToolRounds is reached.
-func (a *Agent) runInterface(ctx context.Context, conversation *[]anthropic.MessageParam) (*anthropic.Message, error) {
-	anthropicTools := make([]anthropic.ToolUnionParam, 0, len(a.tools))
-	for _, tool := range a.tools {
+func (a *Agent) runInterface(ctx context.Context, conversation *[]anthropic.MessageParam, agentTools []tools.ToolDefinition) (*anthropic.Message, error) {
+	anthropicTools := make([]anthropic.ToolUnionParam, 0, len(agentTools))
+	for _, tool := range agentTools {
 		anthropicTools = append(anthropicTools, anthropic.ToolUnionParam{
 			OfTool: &anthropic.ToolParam{
 				Name:        tool.Name,
@@ -129,7 +143,7 @@ func (a *Agent) runInterface(ctx context.Context, conversation *[]anthropic.Mess
 			fmt.Printf("\033[32mtool: %s(%s)\033[0m\n", toolUse.Name, string(toolUse.Input))
 			var result string
 			var isError bool
-			if fn := a.findTool(toolUse.Name); fn != nil {
+			if fn := findTool(agentTools, toolUse.Name); fn != nil {
 				result, err = fn.Function(toolUse.Input)
 				if err != nil {
 					result = err.Error()
@@ -162,10 +176,10 @@ func (a *Agent) runInterface(ctx context.Context, conversation *[]anthropic.Mess
 	return message, nil
 }
 
-func (a *Agent) findTool(name string) *tools.ToolDefinition {
-	for i := range a.tools {
-		if a.tools[i].Name == name {
-			return &a.tools[i]
+func findTool(agentTools []tools.ToolDefinition, name string) *tools.ToolDefinition {
+	for i := range agentTools {
+		if agentTools[i].Name == name {
+			return &agentTools[i]
 		}
 	}
 	return nil
