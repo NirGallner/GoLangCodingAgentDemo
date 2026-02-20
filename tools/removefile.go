@@ -1,5 +1,5 @@
-// Package main provides the removeFile tool for the agent.
-package main
+// Package tools provides the remove_file tool for the agent.
+package tools
 
 import (
 	"encoding/json"

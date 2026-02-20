@@ -1,5 +1,5 @@
-// Package main provides the editFile tool for the agent.
-package main
+// Package tools provides the edit_file tool for the agent.
+package tools
 
 import (
 	"encoding/json"

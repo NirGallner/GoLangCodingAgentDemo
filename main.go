@@ -5,13 +5,13 @@ package main
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 
+	"agentExample/tools"
+
 	"github.com/anthropics/anthropic-sdk-go"
-	"github.com/invopop/jsonschema"
 )
 
 func main() {
@@ -24,15 +24,15 @@ func main() {
 		return scanner.Text(), true
 	}
 
-	tools := []ToolDefinition{
-		ReadFileDefinition, ListFilesDefinition, EditFileDefinition,
-		CreateFileDefinition, RemoveFileDefinition, SearchFileDefinition,
-		GrepInFileDefinition, GrepInFilesDefinition, RunCommandDefinition,
-		GetWorkingDirDefinition, MoveFileDefinition, CopyFileDefinition,
-		FileInfoDefinition, ListFilesRecursiveDefinition, ReadFileLinesDefinition,
-		CreateDirectoryDefinition, RemoveDirectoryDefinition,
+	agentTools := []tools.ToolDefinition{
+		tools.ReadFileDefinition, tools.ListFilesDefinition, tools.EditFileDefinition,
+		tools.CreateFileDefinition, tools.RemoveFileDefinition, tools.SearchFileDefinition,
+		tools.GrepInFileDefinition, tools.GrepInFilesDefinition, tools.RunCommandDefinition,
+		tools.GetWorkingDirDefinition, tools.MoveFileDefinition, tools.CopyFileDefinition,
+		tools.FileInfoDefinition, tools.ListFilesRecursiveDefinition, tools.ReadFileLinesDefinition,
+		tools.CreateDirectoryDefinition, tools.RemoveDirectoryDefinition,
 	}
-	agent := NewAgent(&client, getUserMessage, tools)
+	agent := NewAgent(&client, getUserMessage, agentTools)
 	err := agent.Run(context.Background())
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
@@ -43,15 +43,15 @@ func main() {
 type Agent struct {
 	client         *anthropic.Client
 	getUserMessage func() (string, bool)
-	tools          []ToolDefinition
+	tools          []tools.ToolDefinition
 }
 
 // NewAgent builds an Agent with the given client, message reader, and tool set.
-func NewAgent(client *anthropic.Client, getUserMessage func() (string, bool), tools []ToolDefinition) *Agent {
+func NewAgent(client *anthropic.Client, getUserMessage func() (string, bool), agentTools []tools.ToolDefinition) *Agent {
 	return &Agent{
 		client:         client,
 		getUserMessage: getUserMessage,
-		tools:          tools,
+		tools:          agentTools,
 	}
 }
 
@@ -162,32 +162,11 @@ func (a *Agent) runInterface(ctx context.Context, conversation *[]anthropic.Mess
 	return message, nil
 }
 
-func (a *Agent) findTool(name string) *ToolDefinition {
+func (a *Agent) findTool(name string) *tools.ToolDefinition {
 	for i := range a.tools {
 		if a.tools[i].Name == name {
 			return &a.tools[i]
 		}
 	}
 	return nil
-}
-
-// ToolDefinition describes a single tool: name, description, JSON schema for input, and handler.
-type ToolDefinition struct {
-	Name        string
-	Description string
-	InputSchema anthropic.ToolInputSchemaParam
-	Function    func(input json.RawMessage) (string, error)
-}
-
-// GenerateSchema builds an Anthropic ToolInputSchemaParam from a struct type using jsonschema tags.
-func GenerateSchema[T any]() anthropic.ToolInputSchemaParam {
-	reflector := jsonschema.Reflector{
-		AllowAdditionalProperties: false,
-		DoNotReference:            true,
-	}
-	var v T
-	schema := reflector.Reflect(v)
-	return anthropic.ToolInputSchemaParam{
-		Properties: schema.Properties,
-	}
 }

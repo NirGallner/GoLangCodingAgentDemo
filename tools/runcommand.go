@@ -1,5 +1,5 @@
-// Package main provides the runCommand tool for the agent.
-package main
+// Package tools provides the runCommand tool for the agent.
+package tools
 
 import (
 	"encoding/json"

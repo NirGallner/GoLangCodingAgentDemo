@@ -1,5 +1,5 @@
-// Package main provides the readFileLines tool for the agent.
-package main
+// Package tools provides the readFileLines tool for the agent.
+package tools
 
 import (
 	"encoding/json"

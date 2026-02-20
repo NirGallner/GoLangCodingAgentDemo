@@ -1,5 +1,5 @@
-// Package main provides the removeDirectory tool for the agent.
-package main
+// Package tools provides the removeDirectory tool for the agent.
+package tools
 
 import (
 	"encoding/json"

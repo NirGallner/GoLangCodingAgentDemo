@@ -1,5 +1,5 @@
-// Package main provides the createFile tool for the agent.
-package main
+// Package tools provides the create_file tool for the agent.
+package tools
 
 import (
 	"encoding/json"
