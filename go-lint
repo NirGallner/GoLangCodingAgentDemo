@@ -1,0 +1,6 @@
+#!/bin/sh
+# Run from any Go module directory to lint the whole project.
+# To use "go lint" from the shell, install once:
+#   cp go-lint $(go env GOPATH)/bin/
+# (Ensure $(go env GOPATH)/bin is in your PATH.)
+exec go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run ./...

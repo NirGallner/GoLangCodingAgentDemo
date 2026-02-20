@@ -1,7 +1,7 @@
 {
 	"go.useLanguageServer": true,
-	"go.lintTool": "staticcheck",
-	"go.lintFlags": ["-checks=all"],
+	"go.lintTool": "golangci-lint",
+	"go.lintFlags": ["--config", "${workspaceFolder}/.golangci.yml"],
 	"go.buildOnSave": "workspace",
 	"go.vetOnSave": "workspace",
 	"go.testFlags": ["-v"],
