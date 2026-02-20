@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/invopop/jsonschema"
@@ -23,7 +24,7 @@ func main() {
 		return scanner.Text(), true
 	}
 
-	tools := []ToolDefinition{ReadFileDefinition}
+	tools := []ToolDefinition{ReadFileDefinition, ListFilesDefinition}
 	agent := NewAgent(&client, getUserMessage, tools)
 	err := agent.Run(context.Background())
 	if err != nil {
@@ -60,6 +61,11 @@ func (a *Agent) Run(ctx context.Context) error {
 		userInput, ok := a.getUserMessage()
 		if !ok {
 			break
+		}
+		userInput = strings.TrimSpace(userInput)
+		if userInput == "" {
+			fmt.Fprintln(os.Stderr, "Please enter a message.")
+			continue
 		}
 
 		userMessage := anthropic.NewUserMessage(anthropic.NewTextBlock(userInput))
