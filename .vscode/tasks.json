@@ -1,0 +1,68 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "go: run",
+			"type": "shell",
+			"command": "go run .",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "go: build",
+			"type": "shell",
+			"command": "go build -o ${workspaceFolderBasename} .",
+			"group": "build",
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "go: test",
+			"type": "shell",
+			"command": "go test ./...",
+			"group": "test",
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "go: test (verbose)",
+			"type": "shell",
+			"command": "go test -v ./...",
+			"group": "test",
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "go: vet",
+			"type": "shell",
+			"command": "go vet ./...",
+			"group": "none",
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "go: mod tidy",
+			"type": "shell",
+			"command": "go mod tidy",
+			"group": "none",
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			}
+		}
+	]
+}

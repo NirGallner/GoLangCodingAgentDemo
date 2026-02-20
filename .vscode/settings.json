@@ -1,0 +1,27 @@
+{
+	"go.useLanguageServer": true,
+	"go.lintTool": "staticcheck",
+	"go.lintFlags": ["-checks=all"],
+	"go.buildOnSave": "workspace",
+	"go.vetOnSave": "workspace",
+	"go.testFlags": ["-v"],
+	"go.coverOnSave": false,
+	"go.toolsManagement.autoUpdate": true,
+	"editor.formatOnSave": true,
+	"[go]": {
+		"editor.defaultFormatter": "golang.go",
+		"editor.codeActionsOnSave": {
+			"source.organizeImports": "explicit"
+		}
+	},
+	"gopls": {
+		"ui.semanticTokens": true,
+		"analyses": {
+			"unusedparams": true,
+			"shadow": true
+		}
+	},
+	"files.watcherExclude": {
+		"**/vendor/**": true
+	}
+}
