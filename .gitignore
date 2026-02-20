@@ -1,0 +1,6 @@
+# Binaries
+/agentExample
+*.exe
+
+# Go workspace
+go.work
