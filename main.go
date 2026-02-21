@@ -31,6 +31,7 @@ func main() {
 		tools.GetWorkingDirDefinition, tools.MoveFileDefinition, tools.CopyFileDefinition,
 		tools.FileInfoDefinition, tools.ListFilesRecursiveDefinition, tools.ReadFileLinesDefinition,
 		tools.CreateDirectoryDefinition, tools.RemoveDirectoryDefinition,
+		tools.SearchInternetDefinition, tools.FetchHTMLDefinition, tools.FetchFileDefinition,
 	}
 	agent := NewAgent(&client, getUserMessage, agentTools)
 	err := agent.Run(context.Background())
@@ -57,6 +58,10 @@ func NewAgent(client *anthropic.Client, getUserMessage func() (string, bool), ag
 
 const maxToolRounds = 10
 
+// maxToolResultChars caps each tool result so the conversation stays under the API token limit (~200k).
+// ~40k chars is roughly ~10k tokens; multiple tool calls per round stay safe.
+const maxToolResultChars = 40_000
+
 // Run runs the interactive loop: read user message, call the model (with tool use),
 // print the final text reply, repeat until stdin is closed.
 func (a *Agent) Run(ctx context.Context) error {
@@ -69,7 +74,7 @@ func (a *Agent) Run(ctx context.Context) error {
 	effectiveTools = append(effectiveTools, tools.MakeClearContextDefinition(clearFn))
 
 	for {
-		fmt.Println("\033[94mYou\033[0m: ")
+		fmt.Print("\033[94mYou\033[0m: ")
 		userInput, ok := a.getUserMessage()
 		if !ok {
 			break
@@ -148,6 +153,9 @@ func (a *Agent) runInterface(ctx context.Context, conversation *[]anthropic.Mess
 				if err != nil {
 					result = err.Error()
 					isError = true
+				}
+				if len(result) > maxToolResultChars {
+					result = result[:maxToolResultChars] + "\n\n[Output truncated to " + fmt.Sprintf("%d", maxToolResultChars) + " characters to fit context limit.]"
 				}
 			} else {
 				result = fmt.Sprintf("unknown tool: %s", toolUse.Name)
